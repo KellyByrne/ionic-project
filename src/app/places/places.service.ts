@@ -1,16 +1,16 @@
 import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+import { take, map, tap, delay } from 'rxjs/operators';
+
 import {Place} from './place.model';
 import { AuthService } from '../auth/auth.service';
-import { BehaviorSubject } from 'rxjs';
-import { take } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PlacesService {
-// tslint:disable-next-line: variable-name
-  private _places = new BehaviorSubject<Place[]>(
-    [
+
+  private _places = new BehaviorSubject<Place[]>([
       new Place(
         'p1',
         'Manhattan Mansion',
@@ -51,7 +51,9 @@ export class PlacesService {
   constructor(private authService: AuthService) { }
 
   getPlace(id: string) {
-    return {...this._places.find(p => p.id === id)};
+    return this.places.pipe(take(1), map(places => {
+      return {...places.find(p => p.id === id)};
+    }));
   }
 
   addPlace(title: string, description: string, price: number, dateFrom: Date, dateTo: Date ) {
@@ -65,8 +67,36 @@ export class PlacesService {
       dateTo,
       this.authService.userId
       );
-      this.places.pipe(take(1)).subscribe(places => {
+// tslint:disable-next-line: align
+    return this.places.pipe(
+      take(1),
+      delay(1000),
+      tap(places => {
+      setTimeout(() => {
         this._places.next(places.concat(newPlace));
-      });
+     }, 1000);
+    }));
+  }
+
+  updatePlace(placeId: string, title: string, description: string) {
+    return this.places.pipe(
+      take(1),
+      delay(1000),
+      tap(places => {
+      const updatedPlaceIndex = places.findIndex(pl => pl.id === placeId);
+      const updatedPlaces = [...places];
+      const oldPlace = updatedPlaces[updatedPlaceIndex];
+      updatedPlaces[updatedPlaceIndex] = new Place(
+        oldPlace.id,
+        title,
+        description,
+        oldPlace.imageUrl,
+        oldPlace.price,
+        oldPlace.availableFrom,
+        oldPlace.availableTo,
+        oldPlace.userId
+        );
+      this._places.next(updatedPlaces);
+    }));
   }
 }
